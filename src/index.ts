@@ -17,6 +17,7 @@ const ROLE_SESSION_NAME = 'GitHubActions';
 const REGION_REGEX = /^[a-z0-9-]+$/g;
 
 export async function run() {
+  core.debug('function run');
   try {
     // Get inputs
     const AccessKeyId = core.getInput('aws-access-key-id', { required: false });
@@ -77,7 +78,7 @@ export async function run() {
         !process.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'] &&
         !roleChaining
       ) {
-        core.info(
+        core.debug(
           'It looks like you might be trying to authenticate with OIDC. Did you mean to set the `id-token` permission? ' +
             'If you are not trying to authenticate with OIDC and the action is working successfully, you can ignore this message.'
         );
@@ -168,7 +169,7 @@ export async function run() {
         );
         // eslint-disable-next-line no-unmodified-loop-condition
       } while (specialCharacterWorkaround && !verifyKeys(roleCredentials.Credentials));
-      core.info(`Authenticated as assumedRoleId ${roleCredentials.AssumedRoleUser!.AssumedRoleId!}`);
+      core.debug(`Authenticated as assumedRoleId ${roleCredentials.AssumedRoleUser!.AssumedRoleId!}`);
       exportCredentials(roleCredentials.Credentials, outputCredentials);
       // We need to validate the credentials in 2 of our use-cases
       // First: self-hosted runners. If the GITHUB_ACTIONS environment variable
@@ -179,7 +180,7 @@ export async function run() {
       }
       await exportAccountId(credentialsClient, maskAccountId);
     } else {
-      core.info('Proceeding with IAM user credentials');
+      core.debug('Proceeding with IAM user credentials');
     }
   } catch (error) {
     core.setFailed(errorMessage(error));

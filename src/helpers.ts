@@ -10,17 +10,21 @@ const SPECIAL_CHARS_REGEX = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+/;
 // Configure the AWS CLI and AWS SDKs using environment variables and set them as secrets.
 // Setting the credentials as secrets masks them in Github Actions logs
 export function exportCredentials(creds?: Partial<Credentials>, outputCredentials?: boolean) {
+  core.debug('calling exportCredentials');
   if (creds?.AccessKeyId) {
+    core.debug('creds?.AccessKeyId');
     core.setSecret(creds.AccessKeyId);
     core.exportVariable('AWS_ACCESS_KEY_ID', creds.AccessKeyId);
   }
 
   if (creds?.SecretAccessKey) {
+    core.debug('creds?.SecretAccessKey');
     core.setSecret(creds.SecretAccessKey);
     core.exportVariable('AWS_SECRET_ACCESS_KEY', creds.SecretAccessKey);
   }
 
   if (creds?.SessionToken) {
+    core.debug('creds?.SessionToken');
     core.setSecret(creds.SessionToken);
     core.exportVariable('AWS_SESSION_TOKEN', creds.SessionToken);
   } else if (process.env['AWS_SESSION_TOKEN']) {
@@ -42,6 +46,7 @@ export function exportCredentials(creds?: Partial<Credentials>, outputCredential
 }
 
 export function unsetCredentials() {
+  core.debug('function unsetCredentials');
   core.exportVariable('AWS_ACCESS_KEY_ID', '');
   core.exportVariable('AWS_SECRET_ACCESS_KEY', '');
   core.exportVariable('AWS_SESSION_TOKEN', '');
@@ -50,12 +55,14 @@ export function unsetCredentials() {
 }
 
 export function exportRegion(region: string) {
+  core.debug('function exportRegion');
   core.exportVariable('AWS_DEFAULT_REGION', region);
   core.exportVariable('AWS_REGION', region);
 }
 
 // Obtains account ID from STS Client and sets it as output
 export async function exportAccountId(credentialsClient: CredentialsClient, maskAccountId?: boolean) {
+  core.debug('function exportAccountId');
   const client = credentialsClient.stsClient;
   const identity = await client.send(new GetCallerIdentityCommand({}));
   const accountId = identity.Account;
@@ -73,6 +80,7 @@ export async function exportAccountId(credentialsClient: CredentialsClient, mask
 // This replaces anything not conforming to the tag restrictions by inverting the regular expression.
 // See the AWS documentation for constraint specifics https://docs.aws.amazon.com/STS/latest/APIReference/API_Tag.html.
 export function sanitizeGitHubVariables(name: string) {
+  core.debug('function sanitizeGitHubVariables');
   const nameWithoutSpecialCharacters = name.replace(/[^\p{L}\p{Z}\p{N}_.:/=+\-@]/gu, SANITIZATION_CHARACTER);
   const nameTruncated = nameWithoutSpecialCharacters.slice(0, MAX_TAG_VALUE_LENGTH);
   return nameTruncated;
@@ -92,6 +100,7 @@ export function reset() {
 }
 
 export function verifyKeys(creds: Partial<Credentials> | undefined) {
+  core.debug('function verifyKeys');
   if (!creds) {
     return false;
   }

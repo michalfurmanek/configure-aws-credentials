@@ -107,7 +107,7 @@ const client_sts_1 = __nccwpck_require__(52209);
 const helpers_1 = __nccwpck_require__(49787);
 async function assumeRoleWithOIDC(params, client, webIdentityToken) {
     delete params.Tags;
-    core.info('Assuming role with OIDC');
+    core.debug('Assuming role with OIDC');
     try {
         const creds = await client.send(new client_sts_1.AssumeRoleWithWebIdentityCommand({
             ...params,
@@ -127,7 +127,7 @@ async function assumeRoleWithWebIdentityTokenFile(params, client, webIdentityTok
     if (!fs_1.default.existsSync(webIdentityTokenFilePath)) {
         throw new Error(`Web identity token file does not exist: ${webIdentityTokenFilePath}`);
     }
-    core.info('Assuming role with web identity token file');
+    core.debug('Assuming role with web identity token file');
     try {
         const webIdentityToken = fs_1.default.readFileSync(webIdentityTokenFilePath, 'utf8');
         delete params.Tags;
@@ -142,7 +142,7 @@ async function assumeRoleWithWebIdentityTokenFile(params, client, webIdentityTok
     }
 }
 async function assumeRoleWithCredentials(params, client) {
-    core.info('Assuming role with user credentials');
+    core.debug('Assuming role with user credentials');
     try {
         const creds = await client.send(new client_sts_1.AssumeRoleCommand({ ...params }));
         return creds;
@@ -180,6 +180,7 @@ async function assumeRole(params) {
     // Calculate role ARN from name and account ID (currently only supports `aws` partition)
     let roleArn = roleToAssume;
     if (!roleArn.startsWith('arn:aws')) {
+        core.debug('Calculate role ARN from name and account ID');
         (0, assert_1.default)((0, helpers_1.isDefined)(sourceAccountId), 'Source Account ID is needed if the Role Name is provided and not the Role Arn.');
         roleArn = `arn:aws:iam::${sourceAccountId}:role/${roleArn}`;
     }
@@ -200,12 +201,15 @@ async function assumeRole(params) {
     // Assume role using one of three methods
     switch (true) {
         case !!webIdentityToken: {
+            core.debug('!!webIdentityToken');
             return assumeRoleWithOIDC(commonAssumeRoleParams, stsClient, webIdentityToken);
         }
         case !!webIdentityTokenFile: {
+            core.debug('!!webIdentityTokenFile');
             return assumeRoleWithWebIdentityTokenFile(commonAssumeRoleParams, stsClient, webIdentityTokenFile, GITHUB_WORKSPACE);
         }
         default: {
+            core.debug('default assumeRoleWithCredentials');
             return assumeRoleWithCredentials(commonAssumeRoleParams, stsClient);
         }
     }
@@ -253,15 +257,19 @@ const SPECIAL_CHARS_REGEX = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+/;
 // Configure the AWS CLI and AWS SDKs using environment variables and set them as secrets.
 // Setting the credentials as secrets masks them in Github Actions logs
 function exportCredentials(creds, outputCredentials) {
+    core.debug('calling exportCredentials');
     if (creds?.AccessKeyId) {
+        core.debug('creds?.AccessKeyId');
         core.setSecret(creds.AccessKeyId);
         core.exportVariable('AWS_ACCESS_KEY_ID', creds.AccessKeyId);
     }
     if (creds?.SecretAccessKey) {
+        core.debug('creds?.SecretAccessKey');
         core.setSecret(creds.SecretAccessKey);
         core.exportVariable('AWS_SECRET_ACCESS_KEY', creds.SecretAccessKey);
     }
     if (creds?.SessionToken) {
+        core.debug('creds?.SessionToken');
         core.setSecret(creds.SessionToken);
         core.exportVariable('AWS_SESSION_TOKEN', creds.SessionToken);
     }
@@ -283,6 +291,7 @@ function exportCredentials(creds, outputCredentials) {
 }
 exports.exportCredentials = exportCredentials;
 function unsetCredentials() {
+    core.debug('function unsetCredentials');
     core.exportVariable('AWS_ACCESS_KEY_ID', '');
     core.exportVariable('AWS_SECRET_ACCESS_KEY', '');
     core.exportVariable('AWS_SESSION_TOKEN', '');
@@ -291,12 +300,14 @@ function unsetCredentials() {
 }
 exports.unsetCredentials = unsetCredentials;
 function exportRegion(region) {
+    core.debug('function exportRegion');
     core.exportVariable('AWS_DEFAULT_REGION', region);
     core.exportVariable('AWS_REGION', region);
 }
 exports.exportRegion = exportRegion;
 // Obtains account ID from STS Client and sets it as output
 async function exportAccountId(credentialsClient, maskAccountId) {
+    core.debug('function exportAccountId');
     const client = credentialsClient.stsClient;
     const identity = await client.send(new client_sts_1.GetCallerIdentityCommand({}));
     const accountId = identity.Account;
@@ -314,6 +325,7 @@ exports.exportAccountId = exportAccountId;
 // This replaces anything not conforming to the tag restrictions by inverting the regular expression.
 // See the AWS documentation for constraint specifics https://docs.aws.amazon.com/STS/latest/APIReference/API_Tag.html.
 function sanitizeGitHubVariables(name) {
+    core.debug('function sanitizeGitHubVariables');
     const nameWithoutSpecialCharacters = name.replace(/[^\p{L}\p{Z}\p{N}_.:/=+\-@]/gu, SANITIZATION_CHARACTER);
     const nameTruncated = nameWithoutSpecialCharacters.slice(0, MAX_TAG_VALUE_LENGTH);
     return nameTruncated;
@@ -333,6 +345,7 @@ function reset() {
 }
 exports.reset = reset;
 function verifyKeys(creds) {
+    core.debug('function verifyKeys');
     if (!creds) {
         return false;
     }
@@ -422,6 +435,7 @@ const DEFAULT_ROLE_DURATION = 3600; // One hour (seconds)
 const ROLE_SESSION_NAME = 'GitHubActions';
 const REGION_REGEX = /^[a-z0-9-]+$/g;
 async function run() {
+    core.debug('function run');
     try {
         // Get inputs
         const AccessKeyId = core.getInput('aws-access-key-id', { required: false });
@@ -478,7 +492,7 @@ async function run() {
                 !AccessKeyId &&
                 !process.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'] &&
                 !roleChaining) {
-                core.info('It looks like you might be trying to authenticate with OIDC. Did you mean to set the `id-token` permission? ' +
+                core.debug('It looks like you might be trying to authenticate with OIDC. Did you mean to set the `id-token` permission? ' +
                     'If you are not trying to authenticate with OIDC and the action is working successfully, you can ignore this message.');
             }
             return (!!roleToAssume &&
@@ -554,7 +568,7 @@ async function run() {
                 }, !disableRetry, maxRetries);
                 // eslint-disable-next-line no-unmodified-loop-condition
             } while (specialCharacterWorkaround && !(0, helpers_1.verifyKeys)(roleCredentials.Credentials));
-            core.info(`Authenticated as assumedRoleId ${roleCredentials.AssumedRoleUser.AssumedRoleId}`);
+            core.debug(`Authenticated as assumedRoleId ${roleCredentials.AssumedRoleUser.AssumedRoleId}`);
             (0, helpers_1.exportCredentials)(roleCredentials.Credentials, outputCredentials);
             // We need to validate the credentials in 2 of our use-cases
             // First: self-hosted runners. If the GITHUB_ACTIONS environment variable
@@ -566,7 +580,7 @@ async function run() {
             await (0, helpers_1.exportAccountId)(credentialsClient, maskAccountId);
         }
         else {
-            core.info('Proceeding with IAM user credentials');
+            core.debug('Proceeding with IAM user credentials');
         }
     }
     catch (error) {

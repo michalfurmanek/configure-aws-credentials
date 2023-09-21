@@ -13,6 +13,7 @@ import { errorMessage } from '../helpers';
  */
 
 export function cleanup() {
+  core.debug('function cleanup');
   try {
     // The GitHub Actions toolkit does not have an option to completely unset
     // environment variables, so we overwrite the current value with an empty

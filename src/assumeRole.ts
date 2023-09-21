@@ -9,7 +9,7 @@ import { errorMessage, isDefined, sanitizeGitHubVariables } from './helpers';
 
 async function assumeRoleWithOIDC(params: AssumeRoleCommandInput, client: STSClient, webIdentityToken: string) {
   delete params.Tags;
-  core.info('Assuming role with OIDC');
+  core.debug('Assuming role with OIDC');
   try {
     const creds = await client.send(
       new AssumeRoleWithWebIdentityCommand({
@@ -38,7 +38,7 @@ async function assumeRoleWithWebIdentityTokenFile(
   if (!fs.existsSync(webIdentityTokenFilePath)) {
     throw new Error(`Web identity token file does not exist: ${webIdentityTokenFilePath}`);
   }
-  core.info('Assuming role with web identity token file');
+  core.debug('Assuming role with web identity token file');
   try {
     const webIdentityToken = fs.readFileSync(webIdentityTokenFilePath, 'utf8');
     delete params.Tags;
@@ -55,7 +55,7 @@ async function assumeRoleWithWebIdentityTokenFile(
 }
 
 async function assumeRoleWithCredentials(params: AssumeRoleCommandInput, client: STSClient) {
-  core.info('Assuming role with user credentials');
+  core.debug('Assuming role with user credentials');
   try {
     const creds = await client.send(new AssumeRoleCommand({ ...params }));
     return creds;
@@ -121,6 +121,7 @@ export async function assumeRole(params: assumeRoleParams) {
   // Calculate role ARN from name and account ID (currently only supports `aws` partition)
   let roleArn = roleToAssume;
   if (!roleArn.startsWith('arn:aws')) {
+    core.debug('Calculate role ARN from name and account ID');
     assert(
       isDefined(sourceAccountId),
       'Source Account ID is needed if the Role Name is provided and not the Role Arn.'
@@ -147,10 +148,12 @@ export async function assumeRole(params: assumeRoleParams) {
   // Assume role using one of three methods
   switch (true) {
     case !!webIdentityToken: {
+      core.debug('!!webIdentityToken');
       return assumeRoleWithOIDC(commonAssumeRoleParams, stsClient, webIdentityToken!);
     }
 
     case !!webIdentityTokenFile: {
+      core.debug('!!webIdentityTokenFile');
       return assumeRoleWithWebIdentityTokenFile(
         commonAssumeRoleParams,
         stsClient,
@@ -160,6 +163,7 @@ export async function assumeRole(params: assumeRoleParams) {
     }
 
     default: {
+      core.debug('default assumeRoleWithCredentials');
       return assumeRoleWithCredentials(commonAssumeRoleParams, stsClient);
     }
   }
